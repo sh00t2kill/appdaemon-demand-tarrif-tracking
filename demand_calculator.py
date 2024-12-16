@@ -27,6 +27,7 @@ class EnergyTracker(hass.Hass):
         self.demand_rate_high_season = float(self.args.get("demand_rate_high_season", 0.15))  # High-season demand rate in $/kW
         self.demand_rate_low_season = float(self.args.get("demand_rate_low_season", 0.10))  # Low-season demand rate in $/kW
         self.feed_in_tariff = float(self.args.get("feed_in_tariff", 0.1)) if self.args.get("feed_in_tariff") else None  # Feed-in tariff rate in $/kWh
+        self.demand_rate_temperate_season = float(self.args.get("demand_rate_temperate_season", 0.12))  # Temperate-season demand rate in $/kW
 
         self.cache_file = os.path.join(self.config_dir, "apps", "energy_tracker_cache.json")
         self.load_cache()
@@ -166,7 +167,7 @@ class EnergyTracker(hass.Hass):
         if self.is_high_season(current_date):
             return self.demand_rate_high_season
         elif self.is_temperate_season(current_date):
-            return self.demand_rate_low_season
+            return self.demand_rate_temperate_season
         else:
             return self.demand_rate_low_season
 
