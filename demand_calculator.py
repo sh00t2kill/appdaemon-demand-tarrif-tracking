@@ -165,23 +165,31 @@ class EnergyTracker(hass.Hass):
         current_date = datetime.datetime.now().date()
         if self.is_high_season(current_date):
             return self.demand_rate_high_season
+        elif self.is_temperate_season(current_date):
+            return self.demand_rate_low_season
         else:
             return self.demand_rate_low_season
 
     def is_peak_period(self, current_time):
-        return datetime.time(14, 0) <= current_time <= datetime.time(20, 0)
+        return datetime.time(14, 0) <= current_time <= datetime.time(20, 0) and self.is_weekday()
 
     def is_shoulder_period(self, current_time):
-        return (datetime.time(7, 0) <= current_time < datetime.time(14, 0)) or (datetime.time(20, 0) <= current_time < datetime.time(22, 0))
+        return (datetime.time(7, 0) <= current_time < datetime.time(14, 0) or datetime.time(20, 0) <= current_time < datetime.time(22, 0) and self.is_weekday()) or (datetime.time(7, 0) <= current_time < datetime.time(22, 0) and not self.is_weekday())
+
+    def is_off_peak_period(self, current_time):
+        return not (self.is_peak_period(current_time) or self.is_shoulder_period(current_time))
+
+    def is_weekday(self):
+        return datetime.datetime.now().weekday() < 5
 
     def is_high_season(self, current_date):
-        month = current_date.month
-        day = current_date.day
-        if (month == 11 and day >= 1) or (month == 12) or (month == 1) or (month == 2) or (month == 3 and day <= 31):
-            return True
-        if (month == 6 and day >= 1) or (month == 7) or (month == 8 and day <= 31):
-            return True
-        return False
+        return (datetime.date(current_date.year, 11, 1) <= current_date <= datetime.date(current_date.year, 3, 31) and self.is_weekday() and datetime.time(14, 0) <= datetime.datetime.now().time() <= datetime.time(20, 0))
+
+    def is_temperate_season(self, current_date):
+        return (datetime.date(current_date.year, 4, 1) <= current_date <= datetime.date(current_date.year, 5, 31)) or (datetime.date(current_date.year, 9, 1) <= current_date <= datetime.date(current_date.year, 10, 31))
+
+    def is_winter_season(self, current_date):
+        return (datetime.date(current_date.year, 6, 1) <= current_date <= datetime.date(current_date.year, 8, 31))
 
     def reset_daily_totals(self, kwargs):
         self.total_import = 0
