@@ -8,11 +8,12 @@ class EnergyTracker(hass.Hass):
     def initialize(self):
         self.import_sensor = self.args.get("import_sensor", "sensor.energy_import")
         self.export_sensor = self.args.get("export_sensor", "sensor.energy_export")
-        self.solar_sensor = self.args.get("solar_sensor", "sensor.solar_generated")
+        self.solar_sensor = self.args.get("solar_sensor")
         
         self.listen_state(self.track_energy_import, self.import_sensor)
         self.listen_state(self.track_energy_export, self.export_sensor)
-        self.listen_state(self.track_solar, self.solar_sensor)
+        if self.solar_sensor:
+            self.listen_state(self.track_solar, self.solar_sensor)
         
         self.peak_usage = 0
         self.monthly_peak_usage = float(self.get_state("sensor.monthly_peak_usage", default=0) or 0)
@@ -25,7 +26,7 @@ class EnergyTracker(hass.Hass):
         self.usage_rate_off_peak = float(self.args.get("usage_rate_off_peak", 0.1))  # Off-peak usage rate in $/kWh
         self.demand_rate_high_season = float(self.args.get("demand_rate_high_season", 0.15))  # High-season demand rate in $/kW
         self.demand_rate_low_season = float(self.args.get("demand_rate_low_season", 0.10))  # Low-season demand rate in $/kW
-        self.feed_in_tariff = float(self.args.get("feed_in_tariff", 0.1))  # Feed-in tariff rate in $/kWh
+        self.feed_in_tariff = float(self.args.get("feed_in_tariff", 0.1)) if self.args.get("feed_in_tariff") else None  # Feed-in tariff rate in $/kWh
 
         self.cache_file = os.path.join(self.config_dir, "apps", "energy_tracker_cache.json")
         self.load_cache()
@@ -40,14 +41,29 @@ class EnergyTracker(hass.Hass):
                 cache = json.load(f)
                 self.previous_import = cache.get("previous_import", float(self.get_state(self.import_sensor) or 0))
                 self.previous_export = cache.get("previous_export", float(self.get_state(self.export_sensor) or 0))
+                self.total_import = cache.get("total_import", 0)
+                self.total_export = cache.get("total_export", 0)
+                self.total_solar_generated = cache.get("total_solar_generated", 0) if self.solar_sensor else 0
+                self.peak_usage = cache.get("peak_usage", 0)
+                self.monthly_peak_usage = cache.get("monthly_peak_usage", float(self.get_state("sensor.monthly_peak_usage", default=0) or 0))
         else:
             self.previous_import = float(self.get_state(self.import_sensor) or 0)
             self.previous_export = float(self.get_state(self.export_sensor) or 0)
+            self.total_import = 0
+            self.total_export = 0
+            self.total_solar_generated = 0
+            self.peak_usage = 0
+            self.monthly_peak_usage = float(self.get_state("sensor.monthly_peak_usage", default=0) or 0)
 
     def save_cache(self):
         cache = {
             "previous_import": self.previous_import,
-            "previous_export": self.previous_export
+            "previous_export": self.previous_export,
+            "total_import": self.total_import,
+            "total_export": self.total_export,
+            "total_solar_generated": self.total_solar_generated if self.solar_sensor else 0,
+            "peak_usage": self.peak_usage,
+            "monthly_peak_usage": self.monthly_peak_usage
         }
         with open(self.cache_file, 'w') as f:
             json.dump(cache, f)
@@ -75,12 +91,14 @@ class EnergyTracker(hass.Hass):
         self.total_export += export
         self.save_cache()
         self.log(f"Total export: {self.total_export} kWh")
-        self.calculate_solar_savings()
+        if self.feed_in_tariff:
+            self.calculate_solar_savings()
 
     def track_solar(self, entity, attribute, old, new, kwargs):
-        self.total_solar_generated += float(new)
-        self.log(f"Total solar generated: {self.total_solar_generated} kWh")
-        self.set_state("sensor.daily_solar_generated", state=self.total_solar_generated)
+        if self.solar_sensor:
+            self.total_solar_generated += float(new)
+            self.log(f"Total solar generated: {self.total_solar_generated} kWh")
+            self.set_state("sensor.daily_solar_generated", state=self.total_solar_generated)
 
     def reset_peak_usage(self):
         self.run_daily(self.reset_peak_usage_callback, datetime.time(0, 0))
@@ -105,14 +123,15 @@ class EnergyTracker(hass.Hass):
         self.calculate_total_bill()
 
     def calculate_solar_savings(self):
-        solar_savings = self.total_export * self.feed_in_tariff
-        self.set_state("sensor.daily_solar_savings", state=solar_savings, attributes={
-            "unit_of_measurement": "$",
-            "device_class": "monetary",
-            "friendly_name": "Daily Solar Savings",
-            "icon": "mdi:currency-usd"
-        })
-        self.calculate_total_bill()
+        if self.feed_in_tariff:
+            solar_savings = self.total_export * self.feed_in_tariff
+            self.set_state("sensor.daily_solar_savings", state=solar_savings, attributes={
+                "unit_of_measurement": "$",
+                "device_class": "monetary",
+                "friendly_name": "Daily Solar Savings",
+                "icon": "mdi:currency-usd"
+            })
+            self.calculate_total_bill()
 
     def calculate_total_bill(self):
         demand_charge = self.monthly_peak_usage * self.get_demand_rate()
@@ -167,12 +186,13 @@ class EnergyTracker(hass.Hass):
     def reset_daily_totals(self, kwargs):
         self.total_import = 0
         self.total_export = 0
-        self.total_solar_generated = 0
+        self.total_solar_generated = 0 if self.solar_sensor else 0
         self.previous_import = float(self.get_state(self.import_sensor) or 0)
         self.previous_export = float(self.get_state(self.export_sensor) or 0)
         self.set_state("sensor.daily_usage_charge", state=0)
         self.set_state("sensor.daily_solar_savings", state=0)
         self.set_state("sensor.daily_total_bill", state=0)
         self.set_state("sensor.daily_demand_charge", state=0)
-        self.set_state("sensor.daily_solar_generated", state=0)
+        if self.solar_sensor:
+            self.set_state("sensor.daily_solar_generated", state=0)
         self.save_cache()
