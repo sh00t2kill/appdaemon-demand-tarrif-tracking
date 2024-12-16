@@ -15,5 +15,6 @@ energy_tracker:
   usage_rate_off_peak: 0.299  # Off-peak usage rate in $/kWh
   demand_rate_high_season: 0.12  # High-season demand rate in $/kW
   demand_rate_low_season: 0.07 # Low-season demand rate in $/kW
+  demand_rate_temperate_season: 0.154
   feed_in_tariff: 0.05 # Feed-in tariff rate in $/kWh
 ```
