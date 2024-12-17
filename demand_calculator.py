@@ -236,6 +236,7 @@ class EnergyTracker(hass.Hass):
         self.total_import = 0
         self.total_export = 0
         self.total_solar_generated = 0 if self.solar_sensor else 0
+        self.total_demand = 0
         self.previous_import = float(self.get_state(self.import_sensor) or 0)
         self.previous_export = float(self.get_state(self.export_sensor) or 0)
         self.previous_solar = float(self.get_state(self.solar_sensor) or 0) if self.solar_sensor else 0
