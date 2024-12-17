@@ -20,3 +20,18 @@ energy_tracker:
 ```
 
 All rates are expected, so just make them all the same if thats the case
+
+
+
+A number of sensors are created by this:<br/>
+<ul>
+  <li><b>sensor.monthly_peak_usage</b>: The highest demand import for the current month, in kwh</li>
+  <li><b>sensor.daily_solar_generated</b>: Todays solar generation, in kwh</li>
+  <li><b>ensor.daily_usage_charge</b>: Todays import cost, NOT daily surcharge or demand, in $</li>
+  <li><b>sensor.daily_solar_savings</b>: How much FIT was earnt today, in $</li>
+  <li><b>sensor.daily_demand_charge</b>: Todays demand fee, in $</li>
+  <li><b>sensor.daily_total_bill</b>: The energy cost for today. This includes surcharge, demand, FIT offset, and all configured tarrifs, in $</li>
+  <li><b>sensor.daily_import_charge</b>: Today import charge, including the daily surchange and demand, in $</li>
+
+<b>sensor.daily_import_change</b> is most likely what you want to configure for your energy dashboard, using `Use an entity tracking the total costs`
+  
