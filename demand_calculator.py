@@ -83,7 +83,13 @@ class EnergyTracker(hass.Hass):
                 self.peak_usage = usage
             if usage > self.monthly_peak_usage:
                 self.monthly_peak_usage = usage
-                self.set_state("sensor.monthly_peak_usage", state=self.monthly_peak_usage)
+                self.set_state("sensor.monthly_peak_usage", state=self.monthly_peak_usage, attributes={
+                    "unit_of_measurement": "kWh",
+                    "device_class": "energy",
+                    "state_class": "measurement",
+                    "friendly_name": "Monthly Peak Usage",
+                    "icon": "mdi:flash"
+                })
         self.log(f"Current peak usage: {self.peak_usage} kW")
         self.log(f"Monthly peak usage: {self.monthly_peak_usage} kW")
         self.log(f"Total import: {self.total_import} kWh")
@@ -122,7 +128,13 @@ class EnergyTracker(hass.Hass):
     def reset_monthly_peak_usage(self, kwargs):
         self.log(f"Resetting monthly peak usage. Previous monthly peak: {self.monthly_peak_usage} kW")
         self.monthly_peak_usage = 0
-        self.set_state("sensor.monthly_peak_usage", state=self.monthly_peak_usage)
+        self.set_state("sensor.monthly_peak_usage", state=self.monthly_peak_usage, attributes={
+            "unit_of_measurement": "kWh",
+            "device_class": "energy",
+            "state_class": "measurement",
+            "friendly_name": "Monthly Peak Usage",
+            "icon": "mdi:flash"
+        })
 
     def calculate_import_charge(self):
         usage_charge = self.calculate_usage_charge()
@@ -130,6 +142,7 @@ class EnergyTracker(hass.Hass):
             "unit_of_measurement": "$",
             "device_class": "monetary",
             "friendly_name": "Daily Usage Charge",
+            "state_class": "total",
             "icon": "mdi:currency-usd"
         })
         self.calculate_total_bill()
@@ -141,6 +154,7 @@ class EnergyTracker(hass.Hass):
                 "unit_of_measurement": "$",
                 "device_class": "monetary",
                 "friendly_name": "Daily Solar Savings",
+                "state_class": "total",
                 "icon": "mdi:currency-usd"
             })
             self.calculate_total_bill()
@@ -150,16 +164,26 @@ class EnergyTracker(hass.Hass):
         usage_charge = float(self.get_state("sensor.daily_usage_charge") or 0)
         solar_savings = float(self.get_state("sensor.daily_solar_savings") or 0)
         total_bill = self.supply_charge + usage_charge + demand_charge - solar_savings
+        import_charge = self.supply_charge + usage_charge + demand_charge
         self.set_state("sensor.daily_demand_charge", state=demand_charge, attributes={
             "unit_of_measurement": "$",
             "device_class": "monetary",
             "friendly_name": "Daily Demand Charge",
+            "state_class": "total",
             "icon": "mdi:currency-usd"
         })
         self.set_state("sensor.daily_total_bill", state=total_bill, attributes={
             "unit_of_measurement": "$",
             "device_class": "monetary",
             "friendly_name": "Daily Total Bill",
+            "state_class": "total",
+            "icon": "mdi:currency-usd"
+        })
+        self.set_state("sensor.daily_import_charge", state=import_charge, attributes={
+            "unit_of_measurement": "$",
+            "device_class": "monetary",
+            "friendly_name": "Daily Import Charge",
+            "state_class": "total",
             "icon": "mdi:currency-usd"
         })
         self.log(f"Daily bill: Supply charge: ${self.supply_charge:.2f}, Usage charge: ${usage_charge:.2f}, Demand charge: ${demand_charge:.2f}, Solar savings: -${solar_savings:.2f}, Total: ${total_bill:.2f}")
@@ -214,6 +238,7 @@ class EnergyTracker(hass.Hass):
         self.set_state("sensor.daily_solar_savings", state=0)
         self.set_state("sensor.daily_total_bill", state=0)
         self.set_state("sensor.daily_demand_charge", state=0)
+        self.set_state("sensor.daily_import_charge", state=0)
         if self.solar_sensor:
             self.set_state("sensor.daily_solar_generated", state=0)
         self.save_cache()
