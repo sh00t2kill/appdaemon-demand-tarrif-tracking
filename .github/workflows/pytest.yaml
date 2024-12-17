@@ -20,6 +20,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install pytest pytest-mock
 
+    - name: Set PYTHONPATH
+      run: echo "PYTHONPATH=$PYTHONPATH:$(pwd)" >> $GITHUB_ENV
+
     - name: Run tests
       run: |
         pytest
