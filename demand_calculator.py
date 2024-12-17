@@ -20,6 +20,7 @@ class EnergyTracker(hass.Hass):
         self.total_import = 0
         self.total_export = 0
         self.total_solar_generated = 0
+        self.total_demand = 0
         self.supply_charge = float(self.args.get("supply_charge", 1.0))  # Daily supply charge in $
         self.usage_rate_peak = float(self.args.get("usage_rate_peak", 0.3))  # Peak usage rate in $/kWh
         self.usage_rate_shoulder = float(self.args.get("usage_rate_shoulder", 0.2))  # Shoulder usage rate in $/kWh
@@ -48,6 +49,7 @@ class EnergyTracker(hass.Hass):
                 self.peak_usage = cache.get("peak_usage", 0)
                 self.monthly_peak_usage = cache.get("monthly_peak_usage", float(self.get_state("sensor.monthly_peak_usage", default=0) or 0))
                 self.previous_solar = cache.get("previous_solar", float(self.get_state(self.solar_sensor) or 0)) if self.solar_sensor else 0
+                self.total_demand = cache.get("total_demand", 0)
         else:
             self.previous_import = float(self.get_state(self.import_sensor) or 0)
             self.previous_export = float(self.get_state(self.export_sensor) or 0)
@@ -57,6 +59,7 @@ class EnergyTracker(hass.Hass):
             self.peak_usage = 0
             self.monthly_peak_usage = float(self.get_state("sensor.monthly_peak_usage", default=0) or 0)
             self.previous_solar = float(self.get_state(self.solar_sensor) or 0) if self.solar_sensor else 0
+            self.total_demand = 0
 
     def save_cache(self):
         cache = {
@@ -67,7 +70,8 @@ class EnergyTracker(hass.Hass):
             "total_solar_generated": self.total_solar_generated if self.solar_sensor else 0,
             "peak_usage": self.peak_usage,
             "monthly_peak_usage": self.monthly_peak_usage,
-            "previous_solar": self.previous_solar if self.solar_sensor else 0
+            "previous_solar": self.previous_solar if self.solar_sensor else 0,
+            "total_demand": self.total_demand
         }
         with open(self.cache_file, 'w') as f:
             json.dump(cache, f)
@@ -79,10 +83,11 @@ class EnergyTracker(hass.Hass):
         self.total_import += usage
         self.save_cache()
         if self.is_peak_period(current_time):
-            if usage > self.peak_usage:
-                self.peak_usage = usage
-            if usage > self.monthly_peak_usage:
-                self.monthly_peak_usage = usage
+            self.total_demand += usage
+            #if usage > self.peak_usage:
+            #    self.peak_usage = usage
+            if self.total_demand > self.monthly_peak_usage:
+                self.monthly_peak_usage = self.total_demand
                 self.set_state("sensor.monthly_peak_usage", state=self.monthly_peak_usage, attributes={
                     "unit_of_measurement": "kWh",
                     "device_class": "energy",
@@ -137,7 +142,7 @@ class EnergyTracker(hass.Hass):
         })
 
     def calculate_import_charge(self):
-        usage_charge = self.calculate_usage_charge()
+        usage_charge = round(self.calculate_usage_charge(), 2)
         self.set_state("sensor.daily_usage_charge", state=usage_charge, attributes={
             "unit_of_measurement": "$",
             "device_class": "monetary",
@@ -149,7 +154,7 @@ class EnergyTracker(hass.Hass):
 
     def calculate_solar_savings(self):
         if self.feed_in_tariff:
-            solar_savings = self.total_export * self.feed_in_tariff
+            solar_savings = round(self.total_export * self.feed_in_tariff, 2)
             self.set_state("sensor.daily_solar_savings", state=solar_savings, attributes={
                 "unit_of_measurement": "$",
                 "device_class": "monetary",
@@ -160,11 +165,11 @@ class EnergyTracker(hass.Hass):
             self.calculate_total_bill()
 
     def calculate_total_bill(self):
-        demand_charge = self.monthly_peak_usage * self.get_demand_rate()
-        usage_charge = float(self.get_state("sensor.daily_usage_charge") or 0)
-        solar_savings = float(self.get_state("sensor.daily_solar_savings") or 0)
-        total_bill = self.supply_charge + usage_charge + demand_charge - solar_savings
-        import_charge = self.supply_charge + usage_charge + demand_charge
+        demand_charge = round(self.monthly_peak_usage * self.get_demand_rate(), 2)
+        usage_charge = round(float(self.get_state("sensor.daily_usage_charge") or 0), 2)
+        solar_savings = round(float(self.get_state("sensor.daily_solar_savings") or 0), 2)
+        total_bill = round(self.supply_charge + usage_charge + demand_charge - solar_savings, 2)
+        import_charge = round(self.supply_charge + usage_charge + demand_charge, 2)
         self.set_state("sensor.daily_demand_charge", state=demand_charge, attributes={
             "unit_of_measurement": "$",
             "device_class": "monetary",
