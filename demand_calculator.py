@@ -105,7 +105,12 @@ class EnergyTracker(hass.Hass):
             self.total_solar_generated += solar_generated
             self.save_cache()
             self.log(f"Total solar generated: {self.total_solar_generated} kWh")
-            self.set_state("sensor.daily_solar_generated", state=self.total_solar_generated)
+            self.set_state("sensor.daily_solar_generated", state=self.total_solar_generated, attributes={
+                "unit_of_measurement": "kWh",
+                "device_class": "energy",
+                "friendly_name": "Daily Solar Generated",
+                "icon": "mdi:solar-power"
+            })
 
     def reset_peak_usage(self):
         self.run_daily(self.reset_peak_usage_callback, datetime.time(0, 0))
