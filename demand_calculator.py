@@ -212,7 +212,7 @@ class EnergyTracker(hass.Hass):
             return self.demand_rate_low_season
 
     def is_peak_period(self, current_time):
-        return datetime.time(14, 0) <= current_time <= datetime.time(20, 0) and self.is_weekday()
+        return datetime.time(15, 0) <= current_time <= datetime.time(21, 0) and self.is_weekday()
 
     def is_shoulder_period(self, current_time):
         return (datetime.time(7, 0) <= current_time < datetime.time(14, 0) or datetime.time(20, 0) <= current_time < datetime.time(22, 0) and self.is_weekday()) or (datetime.time(7, 0) <= current_time < datetime.time(22, 0) and not self.is_weekday())
