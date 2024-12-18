@@ -171,12 +171,26 @@ class EnergyTracker(hass.Hass):
             })
             self.calculate_total_bill()
 
+    def calculate_import(self):
+        demand_charge = round(self.monthly_peak_usage * self.get_demand_rate(), 2)
+        usage_charge = round(float(self.get_state("sensor.daily_usage_charge") or 0), 2)
+        # If its between midnight and 1am, only give the usage charge. This will help out on the energy dashboard
+        if datetime.datetime.now().hour < 1 and datetime.datetime.now().minute < 1:
+            import_charge = 0
+        elif datetime.datetime.now().hour < 1:
+            import_charge = usage_charge
+        else:
+            import_charge = round(self.supply_charge + usage_charge + demand_charge, 2)
+        return import_charge
+
     def calculate_total_bill(self):
         demand_charge = round(self.monthly_peak_usage * self.get_demand_rate(), 2)
         usage_charge = round(float(self.get_state("sensor.daily_usage_charge") or 0), 2)
         solar_savings = round(float(self.get_state("sensor.daily_solar_savings") or 0), 2)
-        total_bill = round(self.supply_charge + usage_charge + demand_charge - solar_savings, 2)
-        import_charge = round(self.supply_charge + usage_charge + demand_charge, 2)
+        #total_bill = round(self.supply_charge + usage_charge + demand_charge - solar_savings, 2)
+        #import_charge = round(self.supply_charge + usage_charge + demand_charge, 2)
+        import_charge = self.calculate_import()
+        total_bill = import_charge - solar_savings
         self.set_state("sensor.daily_demand_charge", state=demand_charge, attributes={
             "unit_of_measurement": "$",
             "device_class": "monetary",
