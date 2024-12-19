@@ -30,6 +30,17 @@ class EnergyTracker(hass.Hass):
         self.feed_in_tariff = float(self.args.get("feed_in_tariff", 0.1)) if self.args.get("feed_in_tariff") else None  # Feed-in tariff rate in $/kWh
         self.demand_rate_temperate_season = float(self.args.get("demand_rate_temperate_season", 0.12))  # Temperate-season demand rate in $/kW
 
+        self.peak_start_time = self.args.get("peak_start_time", "14:00")
+        self.peak_end_time = self.args.get("peak_end_time", "20:00")
+        self.shoulder_start_time = self.args.get("shoulder_start_time", "07:00")
+        self.shoulder_end_time = self.args.get("shoulder_end_time", "22:00")
+        self.high_season_start_date = self.args.get("high_season_start_date", "11-01")
+        self.high_season_end_date = self.args.get("high_season_end_date", "03-31")
+        self.temperate_season_start_date = self.args.get("temperate_season_start_date", "04-01")
+        self.temperate_season_end_date = self.args.get("temperate_season_end_date", "05-31")
+        self.winter_season_start_date = self.args.get("winter_season_start_date", "06-01")
+        self.winter_season_end_date = self.args.get("winter_season_end_date", "08-31")
+
         self.cache_file = os.path.join(self.config_dir, "apps", "energy_tracker_cache.json")
         self.load_cache()
 
@@ -237,10 +248,14 @@ class EnergyTracker(hass.Hass):
             return self.demand_rate_low_season
 
     def is_peak_period(self, current_time):
-        return datetime.time(14, 0) <= current_time <= datetime.time(20, 0) and self.is_weekday()
+        peak_start = datetime.datetime.strptime(self.peak_start_time, "%H:%M").time()
+        peak_end = datetime.datetime.strptime(self.peak_end_time, "%H:%M").time()
+        return peak_start <= current_time <= peak_end and self.is_weekday()
 
     def is_shoulder_period(self, current_time):
-        return (datetime.time(7, 0) <= current_time < datetime.time(14, 0) or datetime.time(20, 0) <= current_time < datetime.time(22, 0) and self.is_weekday()) or (datetime.time(7, 0) <= current_time < datetime.time(22, 0) and not self.is_weekday())
+        shoulder_start = datetime.datetime.strptime(self.shoulder_start_time, "%H:%M").time()
+        shoulder_end = datetime.datetime.strptime(self.shoulder_end_time, "%H:%M").time()
+        return (shoulder_start <= current_time < peak_start or peak_end <= current_time < shoulder_end and self.is_weekday()) or (shoulder_start <= current_time < shoulder_end and not self.is_weekday())
 
     def is_off_peak_period(self, current_time):
         return not (self.is_peak_period(current_time) or self.is_shoulder_period(current_time))
@@ -249,13 +264,19 @@ class EnergyTracker(hass.Hass):
         return datetime.datetime.now().weekday() < 5
 
     def is_high_season(self, current_date):
-        return (datetime.date(current_date.year, 11, 1) <= current_date <= datetime.date(current_date.year, 3, 31) and self.is_weekday() and datetime.time(14, 0) <= datetime.datetime.now().time() <= datetime.time(20, 0))
+        high_season_start = datetime.datetime.strptime(self.high_season_start_date, "%m-%d").date().replace(year=current_date.year)
+        high_season_end = datetime.datetime.strptime(self.high_season_end_date, "%m-%d").date().replace(year=current_date.year)
+        return high_season_start <= current_date <= high_season_end and self.is_weekday() and self.is_peak_period(datetime.datetime.now().time())
 
     def is_temperate_season(self, current_date):
-        return (datetime.date(current_date.year, 4, 1) <= current_date <= datetime.date(current_date.year, 5, 31)) or (datetime.date(current_date.year, 9, 1) <= current_date <= datetime.date(current_date.year, 10, 31))
+        temperate_season_start = datetime.datetime.strptime(self.temperate_season_start_date, "%m-%d").date().replace(year=current_date.year)
+        temperate_season_end = datetime.datetime.strptime(self.temperate_season_end_date, "%m-%d").date().replace(year=current_date.year)
+        return temperate_season_start <= current_date <= temperate_season_end
 
     def is_winter_season(self, current_date):
-        return (datetime.date(current_date.year, 6, 1) <= current_date <= datetime.date(current_date.year, 8, 31))
+        winter_season_start = datetime.datetime.strptime(self.winter_season_start_date, "%m-%d").date().replace(year=current_date.year)
+        winter_season_end = datetime.datetime.strptime(self.winter_season_end_date, "%m-%d").date().replace(year=current_date.year)
+        return winter_season_start <= current_date <= winter_season_end
 
     def reset_daily_totals(self, kwargs):
         self.total_import = 0
