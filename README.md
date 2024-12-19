@@ -25,7 +25,7 @@ All rates are expected, so just make them all the same if thats the case
 
 A number of sensors are created by this:<br/>
 <ul>
-  <li><b>sensor.monthly_peak_usage</b>: The highest demand import for the current month, in kwh</li>
+  <li><b>sensor.monthly_peak_usage</b>: The highest demand import for the current month, in kwh. Ie the highest half our period of import during the configured peak period.</li>
   <li><b>sensor.daily_solar_generated</b>: Todays solar generation, in kwh</li>
   <li><b>sensor.daily_usage_charge</b>: Todays import cost, NOT daily surcharge or demand, in $</li>
   <li><b>sensor.daily_solar_savings</b>: How much FIT was earnt today, in $</li>
