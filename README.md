@@ -17,6 +17,16 @@ energy_tracker:
   demand_rate_low_season: 0.07 # Low-season demand rate in $/kW
   demand_rate_temperate_season: 0.154
   feed_in_tariff: 0.05 # Feed-in tariff rate in $/kWh
+  peak_start_time: "14:00" # These are the configured defaults. If these match your plan, theres no need to change them.
+  peak_end_time: "20:00"
+  shoulder_start_time: "07:00"
+  shoulder_end_time: "22:00"
+  high_season_start_date: "11-01"
+  high_season_end_date: "03-31"
+  temperate_season_start_date: "04-01"
+  temperate_season_end_date: "05-31"
+  winter_season_start_date: "06-01"
+  winter_season_end_date: "08-31"
 ```
 
 All rates are expected, so just make them all the same if thats the case
