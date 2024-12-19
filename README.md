@@ -34,4 +34,7 @@ A number of sensors are created by this:<br/>
   <li><b>sensor.daily_import_charge</b>: Today import charge, including the daily surchange and demand, in $</li>
 
 <b>sensor.daily_import_change</b> is most likely what you want to configure for your energy dashboard, using `Use an entity tracking the total costs`
+
+
+Key values are written back to a json file as cache to ensure they persist when the script restarts.
   
