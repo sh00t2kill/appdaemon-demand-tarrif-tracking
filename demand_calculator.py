@@ -36,6 +36,8 @@ class EnergyTracker(hass.Hass):
         self.reset_peak_usage()
         self.run_daily(self.reset_daily_totals, datetime.time(0, 0))
         self.run_every(self.reset_monthly_peak_usage, datetime.datetime.now().replace(day=1, hour=0, minute=0, second=0), 30 * 24 * 60 * 60)
+        self.peak_usage_window = []
+        self.run_every(self.calculate_peak_usage, datetime.datetime.now(), 30 * 60)
 
     def load_cache(self):
         if os.path.exists(self.cache_file):
@@ -83,16 +85,17 @@ class EnergyTracker(hass.Hass):
         self.total_import += usage
         self.save_cache()
         if self.is_peak_period(current_time):
-            self.total_demand += usage
-            #if usage > self.peak_usage:
-            #    self.peak_usage = usage
+            self.peak_usage_window.append(usage)
+            if len(self.peak_usage_window) > 30:
+                self.peak_usage_window.pop(0)
+            self.total_demand = max(self.peak_usage_window)
             if self.total_demand > self.monthly_peak_usage:
                 self.monthly_peak_usage = self.total_demand
                 self.set_state("sensor.monthly_peak_usage", state=self.monthly_peak_usage, attributes={
                     "unit_of_measurement": "kWh",
                     "device_class": "energy",
                     "state_class": "measurement",
-                    "friendly_name": "Monthly Peak Usage",
+                    "friendly_name": "Monthly Peak Demand Usage",
                     "icon": "mdi:flash"
                 })
             self.set_state("sensor.today_peak_usage", state=self.total_demand, attributes={
@@ -101,9 +104,9 @@ class EnergyTracker(hass.Hass):
                 "state_class": "measurement",
                 "friendly_name": "Today Peak Usage",
                 "icon": "mdi:flash"
-                })
+            })
         self.log(f"Current peak usage: {self.peak_usage} kW")
-        self.log(f"Monthly peak usage: {self.monthly_peak_usage} kW")
+        self.log(f"Monthly peak Demand usage: {self.monthly_peak_usage} kW")
         self.log(f"Total import: {self.total_import} kWh")
         self.calculate_import_charge()
 
@@ -144,9 +147,10 @@ class EnergyTracker(hass.Hass):
             "unit_of_measurement": "kWh",
             "device_class": "energy",
             "state_class": "measurement",
-            "friendly_name": "Monthly Peak Usage",
+            "friendly_name": "Monthly Peak Demand Usage",
             "icon": "mdi:flash"
         })
+        self.peak_usage_window = []
 
     def calculate_import_charge(self):
         usage_charge = round(self.calculate_usage_charge(), 2)
@@ -209,7 +213,7 @@ class EnergyTracker(hass.Hass):
             "unit_of_measurement": "$",
             "device_class": "monetary",
             "friendly_name": "Daily Import Charge",
-            "state_class": "total",
+            "state_class": "total_increasing",
             "icon": "mdi:currency-usd"
         })
         self.log(f"Daily bill: Supply charge: ${self.supply_charge:.2f}, Usage charge: ${usage_charge:.2f}, Demand charge: ${demand_charge:.2f}, Solar savings: -${solar_savings:.2f}, Total: ${total_bill:.2f}")
@@ -265,7 +269,16 @@ class EnergyTracker(hass.Hass):
         self.set_state("sensor.daily_solar_savings", state=0)
         self.set_state("sensor.daily_total_bill", state=0)
         self.set_state("sensor.daily_demand_charge", state=0)
-        self.set_state("sensor.daily_import_charge", state=0)
+        self.set_state("sensor.daily_import_charge", state=0, attributes={
+                "last_reset": datetime.datetime.now().isoformat()
+            })
         if self.solar_sensor:
             self.set_state("sensor.daily_solar_generated", state=0)
+        self.peak_usage_window = []
         self.save_cache()
+
+    def calculate_peak_usage(self, kwargs):
+        if self.peak_usage_window:
+            self.peak_usage = max(self.peak_usage_window)
+            self.peak_usage_window = []
+            self.log(f"Calculated peak usage for the last 30 minutes: {self.peak_usage} kW")
