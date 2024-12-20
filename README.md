@@ -42,10 +42,11 @@ A number of sensors are created by this:<br/>
   <li><b>sensor.daily_demand_charge</b>: Todays demand fee, in $</li>
   <li><b>sensor.daily_total_bill</b>: The energy cost for today. This includes surcharge, demand, FIT offset, and all configured tarrifs, in $</li>
   <li><b>sensor.daily_import_charge</b>: Today import charge, including the daily surchange and demand, in $</li>
+</ul>
 
-<p>
+
 <b>sensor.daily_import_charge</b> is most likely what you want to configure for your energy dashboard, using `Use an entity tracking the total costs`
-</p>
+
 
 Key values are written back to a json file as cache to ensure they persist when the script restarts.
   
