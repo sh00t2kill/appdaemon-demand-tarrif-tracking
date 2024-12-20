@@ -44,6 +44,11 @@ A number of sensors are created by this:<br/>
   <li><b>sensor.daily_import_charge</b>: Today import charge, including the daily surchange and demand, in $</li>
 </ul>
 
+Total Bill and Import Charge do a couple of weird things in the early hours of the morning.<br/>
+At midnight, it resets to 0, and stays there for a minute.<br/>
+Then from midnight till 1am, it only shows the import cost.<br/>
+From 1am onwards, it includes the daily supply charge, and the current demand usage, so you will see a jump at 1am.<br/>
+
 
 <b>sensor.daily_import_charge</b> is most likely what you want to configure for your energy dashboard, using `Use an entity tracking the total costs`
 
